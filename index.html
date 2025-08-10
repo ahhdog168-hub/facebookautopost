@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FB Reels Auto-Poster Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --fb-blue: #1877f2;
+            --fb-blue-dark: #166fe5;
+            --fb-green: #42b72a;
+            --ig-gradient: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+        }
+        
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+        }
+        
+        .video-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-radius: 12px;
+            overflow: hidden;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        .video-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .video-thumbnail {
+            height: 200px;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            position: relative;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .processing-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 2;
+        }
+        
+        .status-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 3;
+        }
+        
+        .schedule-badge {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 3;
+        }
+        
+        .video-actions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 3;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .video-card:hover .video-actions {
+            opacity: 1;
+        }
+        
+        .btn-instagram {
+            background: var(--ig-gradient);
+            color: white;
+            border: none;
+        }
+        
+        .btn-instagram:hover {
+            background: var(--ig-gradient);
+            color: white;
+            opacity: 0.9;
+        }
+        
+        .progress-thin {
+            height: 6px;
+        }
+        
+        .account-card {
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+        
+        .account-card.connected {
+            border-left-color: var(--fb-green);
+        }
+        
+        .account-card:hover {
+            transform: translateX(5px);
+        }
+        
+        #dropZone {
+            border: 2px dashed #ced4da;
+            transition: all 0.3s;
+            background-color: #f8f9fa;
+        }
+        
+        #dropZone.drag-over {
+            border-color: var(--fb-blue);
+            background-color: rgba(24, 119, 242, 0.05);
+        }
+        
+        .ai-caption-loading {
+            position: relative;
+        }
+        
+        .ai-caption-loading::after {
+            content: "";
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: translateY(-50%) rotate(0deg); }
+            100% { transform: translateY(-50%) rotate(360deg); }
+        }
+        
+        .caption-actions {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-camera-reels-fill me-2"></i>Reels Auto-Poster Pro
+            </a>
+            <div id="connectionStatus" class="ms-auto alert alert-warning d-flex align-items-center mb-0 py-2">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span>Not connected</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <!-- Left Sidebar -->
+            <div class="col-lg-3">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <button id="connectFbBtn" class="btn btn-primary w-100 mb-3">
+                            <i class="bi bi-facebook me-2"></i>Connect Account
+                        </button>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                                <i class="bi bi-upload me-2"></i>Upload Reel
+                            </button>
+                            <button class="btn btn-outline-secondary" id="scheduleBtn">
+                                <i class="bi bi-calendar-plus me-2"></i>Schedule Posts
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connected Accounts -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <i class="bi bi-person-badge me-2"></i>Connected Accounts
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush" id="connectedAccounts">
+                            <div class="list-group-item text-center py-4 text-muted">
+                                <i class="bi bi-person-x fs-3"></i>
+                                <p class="mt-2 mb-0">No accounts connected</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Summary -->
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <i class="bi bi-graph-up me-2"></i>This Week
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Posts Scheduled</span>
+                                <strong id="scheduledCount">0</strong>
+                            </div>
+                            <div class="progress progress-thin">
+                                <div class="progress-bar bg-success" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Posts Published</span>
+                                <strong id="publishedCount">0</strong>
+                            </div>
+                            <div class="progress progress-thin">
+                                <div class="progress-bar bg-primary" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Engagement Rate</span>
+                                <strong id="engagementRate">0%</strong>
+                            </div>
+                            <div class="progress progress-thin">
+                                <div class="progress-bar bg-info" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-9">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-collection-play me-2"></i>Your Reels</h5>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-secondary active" data-filter="all">All</button>
+                            <button class="btn btn-sm btn-outline-secondary" data-filter="scheduled">Scheduled</button>
+                            <button class="btn btn-sm btn-outline-secondary" data-filter="published">Published</button>
+                            <button class="btn btn-sm btn-outline-secondary" data-filter="drafts">Drafts</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="videoGrid">
+                            <div class="col-12 text-center py-5">
+                                <i class="bi bi-cloud-arrow-up fs-1 text-muted"></i>
+                                <h5 class="mt-3">No reels uploaded yet</h5>
+                                <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                                    <i class="bi bi-plus-circle me-2"></i>Create Your First Reel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Performance</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 class="mb-0" id="totalViews">0</h3>
+                                        <small class="text-muted">Total Views</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 class="mb-0" id="totalLikes">0</h3>
+                                        <small class="text-muted">Total Likes</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 class="mb-0" id="totalShares">0</h3>
+                                        <small class="text-muted">Total Shares</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <canvas id="performanceChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Reel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="border rounded p-4 text-center mb-4" id="dropZone">
+                        <input type="file" id="videoUpload" class="d-none" accept="video/*">
+                        <label for="videoUpload" class="btn btn-lg btn-primary mb-3">
+                            <i class="bi bi-upload me-2"></i>Select Video File
+                        </label>
+                        <p class="text-muted">or drag and drop files here</p>
+                        <div class="progress mt-3 d-none" id="uploadProgress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 position-relative">
+                        <label class="form-label">Caption <button id="generateCaptionBtn" class="btn btn-sm btn-outline-primary caption-actions">
+                            <i class="bi bi-robot me-1"></i> AI Generate
+                        </button></label>
+                        <textarea class="form-control" id="videoCaption" rows="3" placeholder="Add an engaging caption..."></textarea>
+                        <div class="form-text">Use hashtags to increase reach (#trending #viral)</div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Posting Schedule</label>
+                            <select class="form-select" id="postingSchedule">
+                                <option value="now">Post Immediately</option>
+                                <option value="schedule">Schedule for Later</option>
+                                <option value="save">Save as Draft</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3" id="scheduleTimeContainer" style="display: none;">
+                            <label class="form-label">Schedule Time</label>
+                            <input type="datetime-local" class="form-control" id="scheduleTime">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Post to Account</label>
+                            <select class="form-select" id="postToAccount">
+                                <option value="">Select an account</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Visibility</label>
+                            <select class="form-select" id="postVisibility">
+                                <option value="public">Public</option>
+                                <option value="followers">Followers Only</option>
+                                <option value="close_friends">Close Friends</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="autoEnhance" checked>
+                        <label class="form-check-label" for="autoEnhance">Auto-enhance video quality</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="publishBtn" disabled>Publish Reel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Connection Modal -->
+    <div class="modal fade" id="accountModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Connect Social Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <h5>Select Platform</h5>
+                    </div>
+                    <div class="d-grid gap-3">
+                        <button class="btn btn-facebook btn-lg" id="connectFacebook">
+                            <i class="bi bi-facebook me-2"></i>Connect Facebook
+                        </button>
+                        <button class="btn btn-instagram btn-lg" id="connectInstagram">
+                            <i class="bi bi-instagram me-2"></i>Connect Instagram
+                        </button>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle me-2"></i>We'll need permissions to post on your behalf
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="previewTitle">Reel Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="ratio ratio-9x16 mb-3">
+                        <video controls id="previewVideo" class="w-100 bg-dark"></video>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Caption</label>
+                        <textarea class="form-control" id="editCaption" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Schedule</label>
+                            <input type="datetime-local" class="form-control" id="editSchedule">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Account</label>
+                            <select class="form-select" id="editAccount">
+                                <option value="">Select account</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveChangesBtn">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Global state
+        const state = {
+            connectedAccounts: [],
+            videos: [],
+            scheduledPosts: 0,
+            publishedPosts: 0,
+            performanceData: {
+                views: [0, 50, 120, 200, 350, 500, 700],
+                likes: [0, 30, 80, 150, 220, 300, 450],
+                shares: [0, 5, 12, 20, 35, 50, 75]
+            }
+        };
+
+        // DOM Elements
+        const elements = {
+            connectFbBtn: document.getElementById('connectFbBtn'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            connectedAccounts: document.getElementById('connectedAccounts'),
+            videoGrid: document.getElementById('videoGrid'),
+            uploadModal: document.getElementById('uploadModal'),
+            uploadProgress: document.getElementById('uploadProgress'),
+            videoUpload: document.getElementById('videoUpload'),
+            publishBtn: document.getElementById('publishBtn'),
+            generateCaptionBtn: document.getElementById('generateCaptionBtn'),
+            videoCaption: document.getElementById('videoCaption'),
+            postingSchedule: document.getElementById('postingSchedule'),
+            scheduleTimeContainer: document.getElementById('scheduleTimeContainer'),
+            scheduleTime: document.getElementById('scheduleTime'),
+            postToAccount: document.getElementById('postToAccount'),
+            previewModal: document.getElementById('previewModal'),
+            previewVideo: document.getElementById('previewVideo'),
+            editCaption: document.getElementById('editCaption'),
+            editSchedule: document.getElementById('editSchedule'),
+            editAccount: document.getElementById('editAccount'),
+            saveChangesBtn: document.getElementById('saveChangesBtn'),
+            scheduledCount: document.getElementById('scheduledCount'),
+            publishedCount: document.getElementById('publishedCount'),
+            engagementRate: document.getElementById('engagementRate'),
+            totalViews: document.getElementById('totalViews'),
+            totalLikes: document.getElementById('totalLikes'),
+            totalShares: document.getElementById('totalShares'),
+            performanceChart: document.getElementById('performanceChart')
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initEventListeners();
+            checkExistingConnection();
+            initPerformanceChart();
+            updateAnalytics();
+        });
+
+        function initEventListeners() {
+            // Account connection
+            elements.connectFbBtn.addEventListener('click', () => {
+                const modal = new bootstrap.Modal('#accountModal');
+                modal.show();
+            });
+
+            document.getElementById('connectFacebook').addEventListener('click', connectFacebook);
+            document.getElementById('connectInstagram').addEventListener('click', connectInstagram);
+
+            // Upload modal
+            elements.postingSchedule.addEventListener('change', (e) => {
+                elements.scheduleTimeContainer.style.display = e.target.value === 'schedule' ? 'block' : 'none';
+            });
+
+            // File upload
+            elements.videoUpload.addEventListener('change', handleFileSelect);
+            elements.publishBtn.addEventListener('click', publishReel);
+            elements.generateCaptionBtn.addEventListener('click', generateAICaption);
+
+            // Drag and drop
+            const dropZone = document.getElementById('dropZone');
+            ['dragover', 'dragenter'].forEach(event => {
+                dropZone.addEventListener(event, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('drag-over');
+                });
+            });
+
+            ['dragleave', 'dragend', 'drop'].forEach(event => {
+                dropZone.addEventListener(event, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('drag-over');
+                });
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                if (e.dataTransfer.files.length) {
+                    elements.videoUpload.files = e.dataTransfer.files;
+                    handleFileSelect();
+                }
+            });
+
+            // Filter buttons
+            document.querySelectorAll('[data-filter]').forEach(btn => {
+                btn.addEventListener('click', filterVideos);
+            });
+
+            // Preview modal
+            elements.saveChangesBtn.addEventListener('click', saveVideoChanges);
+        }
+
+        function checkExistingConnection() {
+            const connected = localStorage.getItem('fbConnected') === 'true';
+            if (connected) {
+                updateConnectionUI(true);
+                loadDemoAccounts();
+                loadDemoVideos();
+            }
+        }
+
+        function connectFacebook() {
+            const btn = document.getElementById('connectFacebook');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Connecting...';
+            btn.disabled = true;
+
+            // Simulate API connection
+            setTimeout(() => {
+                const success = Math.random() > 0.2; // 80% success rate for demo
+                
+                if (success) {
+                    const account = {
+                        id: 'fb_' + Date.now(),
+                        name: 'Facebook User',
+                        platform: 'facebook',
+                        avatar: 'https://randomuser.me/api/portraits/men/' + Math.floor(Math.random() * 100) + '.jpg'
+                    };
+                    
+                    state.connectedAccounts.push(account);
+                    localStorage.setItem('fbConnected', 'true');
+                    updateConnectionUI(true);
+                    renderConnectedAccounts();
+                    bootstrap.Modal.getInstance('#accountModal').hide();
+                    
+                    Swal.fire({
+                        title: 'Connected!',
+                        text: 'Your Facebook account has been connected successfully',
+                        icon: 'success'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Connection Failed',
+                        text: 'Could not connect to Facebook. Please try again.',
+                        icon: 'error'
+                    });
+                }
+                
+                btn.innerHTML = '<i class="bi bi-facebook me-2"></i>Connect Facebook';
+                btn.disabled = false;
+            }, 2000);
+        }
+
+        function connectInstagram() {
+            const btn = document.getElementById('connectInstagram');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Connecting...';
+            btn.disabled = true;
+
+            // Simulate API connection
+            setTimeout(() => {
+                const success = Math.random() > 0.2; // 80% success rate for demo
+                
+                if (success) {
+                    const account = {
+                        id: 'ig_' + Date.now(),
+                        name: 'Instagram User',
+                        platform: 'instagram',
+                        avatar: 'https://randomuser.me/api/portraits/women/' + Math.floor(Math.random() * 100) + '.jpg'
+                    };
+                    
+                    state.connectedAccounts.push(account);
+                    localStorage.setItem('igConnected', 'true');
+                    updateConnectionUI(true);
+                    renderConnectedAccounts();
+                    bootstrap.Modal.getInstance('#accountModal').hide();
+                    
+                    Swal.fire({
+                        title: 'Connected!',
+                        text: 'Your Instagram account has been connected successfully',
+                        icon: 'success'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Connection Failed',
+                        text: 'Could not connect to Instagram. Please try again.',
+                        icon: 'error'
+                    });
+                }
+                
+                btn.innerHTML = '<i class="bi bi-instagram me-2"></i>Connect Instagram';
+                btn.disabled = false;
+            }, 2000);
+        }
+
+        function updateConnectionUI(connected) {
+            if (connected) {
+                elements.connectFbBtn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Manage Accounts';
+                elements.connectFbBtn.className = 'btn btn-success w-100 mb-3';
+                elements.connectionStatus.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i><span>Connected</span>';
+                elements.connectionStatus.className = 'alert alert-success d-flex align-items-center mb-0 py-2';
+            } else {
+                elements.connectFbBtn.innerHTML = '<i class="bi bi-facebook me-2"></i>Connect Account';
+                elements.connectFbBtn.className = 'btn btn-primary w-100 mb-3';
+                elements.connectionStatus.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i><span>Not connected</span>';
+                elements.connectionStatus.className = 'alert alert-warning d-flex align-items-center mb-0 py-2';
+            }
+        }
+
+        function renderConnectedAccounts() {
+            if (state.connectedAccounts.length === 0) {
+                elements.connectedAccounts.innerHTML = `
+                    <div class="list-group-item text-center py-4 text-muted">
+                        <i class="bi bi-person-x fs-3"></i>
+                        <p class="mt-2 mb-0">No accounts connected</p>
+                    </div>
+                `;
+                return;
+            }
+
+            elements.connectedAccounts.innerHTML = '';
+            state.connectedAccounts.forEach(account => {
+                const accountEl = document.createElement('div');
+                accountEl.className = `list-group-item account-card ${account.platform === 'facebook' ? 'border-left-facebook' : 'border-left-instagram'} connected`;
+                accountEl.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <img src="${account.avatar}" class="rounded-circle me-3" width="40" height="40">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-0">${account.name}</h6>
+                            <small class="text-muted">${account.platform === 'facebook' ? 'Facebook' : 'Instagram'}</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" data-id="${account.id}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                elements.connectedAccounts.appendChild(accountEl);
+                
+                // Add event listener to remove button
+                accountEl.querySelector('button').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeAccount(account.id);
+                });
+            });
+
+            // Update account dropdown in upload modal
+            updateAccountDropdown();
+        }
+
+        function removeAccount(accountId) {
+            Swal.fire({
+                title: 'Disconnect Account?',
+                text: 'This will remove all scheduled posts for this account',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, disconnect',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    state.connectedAccounts = state.connectedAccounts.filter(acc => acc.id !== accountId);
+                    renderConnectedAccounts();
+                    
+                    if (state.connectedAccounts.length === 0) {
+                        localStorage.removeItem('fbConnected');
+                        localStorage.removeItem('igConnected');
+                        updateConnectionUI(false);
+                    }
+                    
+                    Swal.fire('Disconnected!', 'The account has been removed', 'success');
+                }
+            });
+        }
+
+        function updateAccountDropdown() {
+            elements.postToAccount.innerHTML = '<option value="">Select an account</option>';
+            elements.editAccount.innerHTML = '<option value="">Select an account</option>';
+            
+            state.connectedAccounts.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account.id;
+                option.textContent = `${account.name} (${account.platform === 'facebook' ? 'Facebook' : 'Instagram'})`;
+                elements.postToAccount.appendChild(option.cloneNode(true));
+                elements.editAccount.appendChild(option);
+            });
+        }
+
+        function handleFileSelect() {
+            const file = elements.videoUpload.files[0];
+            if (!file) return;
+
+            // Validate file
+            const validTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
+            if (!validTypes.includes(file.type)) {
+                Swal.fire({
+                    title: 'Invalid File',
+                    text: 'Please upload a valid video file (MP4, MOV, AVI)',
+                    icon: 'error'
+                });
+                return;
+            }
+
+            if (file.size > 500 * 1024 * 1024) {
+                Swal.fire({
+                    title: 'File Too Large',
+                    text: 'Maximum file size is 500MB',
+                    icon: 'error'
+                });
+                return;
+            }
+
+            elements.publishBtn.disabled = false;
+            
+            // Create preview
+            const videoURL = URL.createObjectURL(file);
+            elements.previewVideo.src = videoURL;
+            
+            Swal.fire({
+                title: 'File Ready',
+                html: `Selected: <strong>${file.name}</strong><br>Size: ${formatFileSize(file.size)}`,
+                icon: 'success'
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function generateAICaption() {
+            const btn = elements.generateCaptionBtn;
+            btn.disabled = true;
+            elements.videoCaption.classList.add('ai-caption-loading');
+            
+            // Simulate AI processing
+            setTimeout(() => {
+                const captions = [
+                    "Check out this amazing moment! #viral #trending",
+                    "You won't believe what happened next! #fyp #reels",
+                    "Creating memories every day! #life #happy",
+                    "This made my day! #fun #joy",
+                    "Adventure time! #explore #travel"
+                ];
+                
+                const randomCaption = captions[Math.floor(Math.random() * captions.length)];
+                elements.videoCaption.value = randomCaption;
+                
+                btn.disabled = false;
+                elements.videoCaption.classList.remove('ai-caption-loading');
+                
+                Swal.fire({
+                    title: 'Caption Generated!',
+                    text: 'AI has created an engaging caption for your reel',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }, 1500);
+        }
+
+        function publishReel() {
+            const file = elements.videoUpload.files[0];
+            if (!file) return;
+
+            const caption = elements.videoCaption.value || 'Check out my new reel!';
+            const scheduleType = elements.postingSchedule.value;
+            const scheduleTime = scheduleType === 'schedule' ? new Date(elements.scheduleTime.value) : new Date();
+            const accountId = elements.postToAccount.value;
+            
+            if (!accountId) {
+                Swal.fire({
+                    title: 'No Account Selected',
+                    text: 'Please select an account to post to',
+                    icon: 'error'
+                });
+                return;
+            }
+
+            // Show upload progress
+            elements.uploadProgress.classList.remove('d-none');
+            elements.publishBtn.disabled = true;
+            
+            // Simulate upload and processing
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                elements.uploadProgress.querySelector('.progress-bar').style.width = `${progress}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    
+                    // Create video object
+                    const video = {
+                        id: 'vid_' + Date.now(),
+                        name: file.name,
+                        size: file.size,
+                        caption,
+                        status: scheduleType === 'now' ? 'published' : scheduleType === 'schedule' ? 'scheduled' : 'draft',
+                        scheduleTime,
+                        accountId,
+                        thumbColor: getRandomColor(),
+                        views: 0,
+                        likes: 0,
+                        shares: 0,
+                        createdAt: new Date()
+                    };
+                    
+                    state.videos.unshift(video);
+                    
+                    if (video.status === 'published') {
+                        state.publishedPosts++;
+                        video.views = Math.floor(Math.random() * 1000);
+                        video.likes = Math.floor(video.views * 0.2);
+                        video.shares = Math.floor(video.views * 0.05);
+                    } else if (video.status === 'scheduled') {
+                        state.scheduledPosts++;
+                    }
+                    
+                    renderVideos();
+                    updateAnalytics();
+                    
+                    Swal.fire({
+                        title: scheduleType === 'now' ? 'Published!' : 
+                              scheduleType === 'schedule' ? 'Scheduled!' : 'Saved!',
+                        text: scheduleType === 'now' ? 'Your reel has been published successfully' :
+                              scheduleType === 'schedule' ? `Your reel is scheduled for ${scheduleTime.toLocaleString()}` :
+                              'Your reel has been saved as draft',
+                        icon: 'success'
+                    });
+                    
+                    // Reset form
+                    elements.videoUpload.value = '';
+                    elements.videoCaption.value = '';
+                    elements.uploadProgress.classList.add('d-none');
+                    elements.publishBtn.disabled = true;
+                    bootstrap.Modal.getInstance('#uploadModal').hide();
+                }
+            }, 100);
+        }
+
+        function renderVideos() {
+            if (state.videos.length === 0) {
+                elements.videoGrid.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <i class="bi bi-cloud-arrow-up fs-1 text-muted"></i>
+                        <h5 class="mt-3">No reels uploaded yet</h5>
+                        <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                            <i class="bi bi-plus-circle me-2"></i>Create Your First Reel
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            elements.videoGrid.innerHTML = '';
+            state.videos.forEach(video => {
+                const account = state.connectedAccounts.find(acc => acc.id === video.accountId) || {};
+                
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-lg-4 mb-4';
+                col.dataset.status = video.status;
+                col.dataset.id = video.id;
+                col.innerHTML = `
+                    <div class="card video-card h-100">
+                        <div class="video-thumbnail">
+                            <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white">
+                                <i class="bi bi-play-circle fs-1"></i>
+                            </div>
+                            <div class="processing-overlay ${video.status === 'processing' ? '' : 'd-none'}">
+                                <div class="text-center">
+                                    <div class="spinner-border text-light mb-2"></div>
+                                    <p>Processing...</p>
+                                </div>
+                            </div>
+                            <span class="status-badge badge ${getStatusBadgeClass(video)}">
+                                ${getStatusText(video)}
+                            </span>
+                            ${video.status === 'scheduled' ? `
+                            <span class="schedule-badge badge bg-primary">
+                                <i class="bi bi-clock me-1"></i>${video.scheduleTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>` : ''}
+                            <div class="video-actions">
+                                <button class="btn btn-sm btn-light btn-preview" data-id="${video.id}">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light btn-edit ms-1" data-id="${video.id}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-title text-truncate">${video.name}</h6>
+                            <p class="card-text small text-truncate">${video.caption}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">${account.name || 'No account'}</small>
+                                ${video.status === 'published' ? `
+                                <div class="d-flex">
+                                    <small class="text-muted me-2"><i class="bi bi-eye me-1"></i>${video.views}</small>
+                                    <small class="text-muted"><i class="bi bi-hand-thumbs-up me-1"></i>${video.likes}</small>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                elements.videoGrid.appendChild(col);
+                
+                // Add event listeners
+                col.querySelector('.btn-preview').addEventListener('click', () => previewVideo(video));
+                col.querySelector('.btn-edit').addEventListener('click', () => editVideo(video));
+            });
+        }
+
+        function getStatusBadgeClass(video) {
+            switch(video.status) {
+                case 'published': return 'bg-success';
+                case 'scheduled': return 'bg-primary';
+                case 'draft': return 'bg-secondary';
+                case 'failed': return 'bg-danger';
+                default: return 'bg-warning';
+            }
+        }
+
+        function getStatusText(video) {
+            switch(video.status) {
+                case 'published': return 'Published';
+                case 'scheduled': return 'Scheduled';
+                case 'draft': return 'Draft';
+                case 'failed': return 'Failed';
+                default: return 'Processing';
+            }
+        }
+
+        function getRandomColor() {
+            const colors = ['#3a86ff', '#8338ec', '#ff006e', '#fb5607', '#ffbe0b'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function previewVideo(video) {
+            elements.previewTitle.textContent = video.name;
+            elements.previewVideo.src = '';
+            elements.editCaption.value = video.caption;
+            elements.editSchedule.value = formatDateForInput(video.scheduleTime);
+            elements.editAccount.value = video.accountId;
+            
+            // In a real app, we would load the actual video here
+            // For demo, we'll just show a placeholder
+            elements.previewVideo.poster = `https://placehold.co/600x1066/000000/FFFFFF/?text=${encodeURIComponent(video.name)}`;
+            
+            const modal = new bootstrap.Modal('#previewModal');
+            modal.show();
+        }
+
+        function editVideo(video) {
+            Swal.fire({
+                title: 'Edit Reel',
+                html: `Edit options for <strong>${video.name}</strong>`,
+                showCancelButton: true,
+                confirmButtonText: 'Save Changes',
+                cancelButtonText: 'Cancel',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    return new Promise((resolve) => {
+                        setTimeout(() => {
+                            // In a real app, we would save the changes here
+                            resolve();
+                        }, 1000);
+                    });
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire('Saved!', 'Your changes have been saved', 'success');
+                }
+            });
+        }
+
+        function saveVideoChanges() {
+            Swal.fire({
+                title: 'Changes Saved!',
+                text: 'Your reel has been updated successfully',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            bootstrap.Modal.getInstance('#previewModal').hide();
+        }
+
+        function filterVideos(e) {
+            document.querySelectorAll('[data-filter]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            e.target.classList.add('active');
+            
+            const filter = e.target.dataset.filter;
+            document.querySelectorAll('#videoGrid .col-md-4').forEach(col => {
+                if (filter === 'all') {
+                    col.style.display = 'block';
+                } else {
+                    col.style.display = col.dataset.status === filter ? 'block' : 'none';
+                }
+            });
+        }
+
+        function formatDateForInput(date) {
+            const d = new Date(date);
+            const pad = num => num.toString().padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        function initPerformanceChart() {
+            const ctx = elements.performanceChart.getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [
+                        {
+                            label: 'Views',
+                            data: state.performanceData.views,
+                            borderColor: '#3a86ff',
+                            backgroundColor: 'rgba(58, 134, 255, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Likes',
+                            data: state.performanceData.likes,
+                            borderColor: '#4cc9f0',
+                            backgroundColor: 'rgba(76, 201, 240, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Shares',
+                            data: state.performanceData.shares,
+                            borderColor: '#f72585',
+                            backgroundColor: 'rgba(247, 37, 133, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateAnalytics() {
+            // Update counts
+            elements.scheduledCount.textContent = state.scheduledPosts;
+            elements.publishedCount.textContent = state.publishedPosts;
+            
+            // Calculate engagement rate (demo data)
+            const engagementRate = state.publishedPosts > 0 ? 
+                Math.min(10 + Math.floor(Math.random() * 15), 100) : 0;
+            elements.engagementRate.textContent = engagementRate + '%';
+            
+            // Update progress bars
+            document.querySelector('#scheduledCount').nextElementSibling.querySelector('.progress-bar').style.width = 
+                Math.min(state.scheduledPosts * 10, 100) + '%';
+            document.querySelector('#publishedCount').nextElementSibling.querySelector('.progress-bar').style.width = 
+                Math.min(state.publishedPosts * 10, 100) + '%';
+            document.querySelector('#engagementRate').nextElementSibling.querySelector('.progress-bar').style.width = 
+                engagementRate + '%';
+            
+            // Update totals
+            const totalViews = state.videos.reduce((sum, video) => sum + (video.views || 0), 0);
+            const totalLikes = state.videos.reduce((sum, video) => sum + (video.likes || 0), 0);
+            const totalShares = state.videos.reduce((sum, video) => sum + (video.shares || 0), 0);
+            
+            elements.totalViews.textContent = totalViews.toLocaleString();
+            elements.totalLikes.textContent = totalLikes.toLocaleString();
+            elements.totalShares.textContent = totalShares.toLocaleString();
+        }
+
+        function loadDemoAccounts() {
+            if (localStorage.getItem('fbConnected') === 'true') {
+                state.connectedAccounts.push({
+                    id: 'fb_demo',
+                    name: 'Demo Facebook',
+                    platform: 'facebook',
+                    avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
+                });
+            }
+            
+            if (localStorage.getItem('igConnected') === 'true') {
+                state.connectedAccounts.push({
+                    id: 'ig_demo',
+                    name: 'Demo Instagram',
+                    platform: 'instagram',
+                    avatar: 'https://randomuser.me/api/portraits/women/44.jpg'
+                });
+            }
+            
+            renderConnectedAccounts();
+        }
+
+        function loadDemoVideos() {
+            if (state.connectedAccounts.length === 0) return;
+            
+            const demoVideos = [
+                {
+                    id: 'vid_demo1',
+                    name: 'Summer Vacation.mp4',
+                    size: 124500000,
+                    caption: 'Best summer ever! #vacation #summer',
+                    status: 'published',
+                    scheduleTime: new Date(Date.now() - 86400000),
+                    accountId: state.connectedAccounts[0].id,
+                    thumbColor: '#3a86ff',
+                    views: 1250,
+                    likes: 320,
+                    shares: 45,
+                    createdAt: new Date(Date.now() - 86400000)
+                },
+                {
+                    id: 'vid_demo2',
+                    name: 'Workout Routine.mov',
+                    size: 87650000,
+                    caption: 'My daily workout #fitness #gym',
+                    status: 'scheduled',
+                    scheduleTime: new Date(Date.now() + 3600000 * 2),
+                    accountId: state.connectedAccounts[0].id,
+                    thumbColor: '#ff006e',
+                    views: 0,
+                    likes: 0,
+                    shares: 0,
+                    createdAt: new Date()
+                },
+                {
+                    id: 'vid_demo3',
+                    name: 'Cooking Tutorial.avi',
+                    size: 245600000,
+                    caption: 'How to make pasta #cooking #food',
+                    status: 'draft',
+                    scheduleTime: new Date(),
+                    accountId: state.connectedAccounts[0].id,
+                    thumbColor: '#fb5607',
+                    views: 0,
+                    likes: 0,
+                    shares: 0,
+                    createdAt: new Date()
+                }
+            ];
+            
+            state.videos = [...demoVideos];
+            state.scheduledPosts = 1;
+            state.publishedPosts = 1;
+            
+            renderVideos();
+            updateAnalytics();
+        }
+
+        // Simulate scheduled posts being published
+        setInterval(() => {
+            const now = new Date();
+            let publishedCount = 0;
+            
+            state.videos.forEach(video => {
+                if (video.status === 'scheduled' && video.scheduleTime <= now) {
+                    video.status = 'published';
+                    video.views = Math.floor(Math.random() * 1000);
+                    video.likes = Math.floor(video.views * 0.2);
+                    video.shares = Math.floor(video.views * 0.05);
+                    publishedCount++;
+                    state.scheduledPosts--;
+                    state.publishedPosts++;
+                }
+            });
+            
+            if (publishedCount > 0) {
+                renderVideos();
+                updateAnalytics();
+                
+                // Show notification
+                const toast = document.createElement('div');
+                toast.className = 'position-fixed bottom-0 end-0 p-3';
+                toast.style.zIndex = '11';
+                toast.innerHTML = `
+                    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="toast-header bg-success text-white">
+                            <strong class="me-auto">Reels Published</strong>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                        <div class="toast-body">
+                            ${publishedCount} scheduled reel(s) have been published
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                
+                // Remove toast after 5 seconds
+                setTimeout(() => {
+                    toast.remove();
+                }, 5000);
+            }
+        }, 60000); // Check every minute
+    </script>
+</body>
+</html>
